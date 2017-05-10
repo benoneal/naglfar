@@ -159,6 +159,7 @@ class LinkClass extends Component {
       <a {...rest}
         className={`${className} ${to === currentPath ? activeClassName : ''}`}
         href={to} 
+        target={target}
         onClick={(e) => {
           onClick(e)
           if (shouldIgnoreClick(e, target)) return
