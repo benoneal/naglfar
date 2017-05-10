@@ -139,3 +139,19 @@ export default renderMiddleware
 // use like:
 // server.get('*', renderMiddleware(webpackConfig.output.filename))
 ```
+
+### Useful stuff
+
+If you need to access location data, such as query and route params, they are accessible on your redux store under the top level `location` key. Example: 
+
+```js
+import {connect} from 'react-redux'
+import FilterOptions from '../FilterOptions'
+
+const mapStateToProps = ({location}) => ({
+  sortOrder: location.query.sortOrder,
+  page: location.params.page
+})
+
+export default connect(mapStateToProps)(FilterOptions)
+```
