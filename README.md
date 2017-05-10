@@ -74,6 +74,7 @@ import thunk from 'redux-thunk'
 import {Provider} from 'react-redux'
 import createHistory from 'history/createBrowserHistory'
 import router from 'naglfar'
+import App from './App'
 import reducer from './store'
 
 const createStoreWithMiddleware = applyMiddleware(thunk, router(createHistory()))(createStore)
@@ -89,4 +90,52 @@ export default () => {
 }
 ```
 
-Done. 
+Server-side render middleware (example using express)
+
+```js
+import React from 'react'
+import {renderToString, renderToStaticMarkup} from 'react-dom/server'
+import {Provider} from 'react-redux'
+import createHistory from 'history/createMemoryHistory'
+import {resolveLocation} from 'naglfar'
+import Root from './Root'
+import App from './App'
+
+const renderHtml = ({bundle, store}) => {
+  const body = renderToString(
+    <Provider store={store}>
+      <App />
+    </Provider>
+  )
+
+  const rootMarkup = renderToStaticMarkup(
+    <Root 
+      content={body}
+      initialState={store.getState()}
+      bundle={bundle}
+    />
+  )
+
+  return `<!doctype html>\n${rootMarkup}`
+}
+
+const resolveRoute = ({path, res, bundle, store}) => {
+  resolveLocation(path, config.store.dispatch)
+    .then(({status, url}) => {
+      if (url) return res.redirect(status, url)
+      res.status(status).send(renderHtml({bundle, store}))
+    })
+}
+
+const renderMiddleware = (bundle) => (req, res) => {
+  const history = createHistory({
+    initialEntries: [req.url]
+  })
+  resolveRoute({path: req.url, res, bundle, store: configureStore(history)})
+}
+
+export default renderMiddleware
+
+// use like:
+// server.get('*', renderMiddleware(webpackConfig.output.filename))
+```
