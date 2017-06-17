@@ -31,7 +31,8 @@ const findMatches = (path) => (
   keys(routes).reduce((acc, key) => {
     const {pattern, action} = routes[key]
     const params = pattern.match(path)
-    return params ? [...acc, {params, action}] : acc
+    const matches = (Array.isArray(action) ? action : [action]).map((action) => {params, action})
+    return params ? [...acc, ...matches] : acc
   }, [])
 )
 
