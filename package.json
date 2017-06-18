@@ -1,6 +1,6 @@
 {
   "name": "naglfar",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Redux router done right.",
   "repository": "https://github.com/benoneal/naglfar",
   "main": "dist/index.js",
