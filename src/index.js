@@ -41,27 +41,35 @@ const matchRoute = (route, path) => (
 )
 
 export const resolveLocation = (path, dispatch) => new Promise((resolve) => {
-  path = trimTrailingSlash(path)
-  if (redirect[path]) return resolve({status: 302, url: redirect[path]})
-  
-  const matches = findMatches(path)
-
-  if (!matches.length) return resolve({status: 404})
+  const {status, matches, url} = matchStatus(path)
+  if (status !== 200) return resolve({status, url})
 
   Promise.all(matches
     .map(({params, action}) => typeof action === 'function' && dispatch(action(params)))
     .filter((action) => action instanceof Promise)
   ).then(
-    () => resolve({status: 200}),
+    () => resolve({status}),
     () => resolve({status: 500})
   )
 })
 
-const buildLocationState = (location) => ({
-  ...location,
-  params: findMatches(location.pathname).reduce((acc, {params}) => ({...acc, ...params}), {}),
-  query: qs.parse(location.search.split('?')[1] || '')
-})
+const matchStatus = (path) => {
+  path = trimTrailingSlash(path)
+  const url = redirect[path]
+  const matches = findMatches(path)
+  const status = url ? 302 : !findMatches(path).length ? 404 : 200
+  return {status, matches, url}
+}
+
+const buildLocationState = (location) => {
+  const {status, matches} = matchStatus(location.pathname)
+  return {
+    ...location,
+    status: location.status || status,
+    params: matches.reduce((acc, {params}) => ({...acc, ...params}), {}),
+    query: qs.parse(location.search.split('?')[1] || '')
+  }
+}
 
 export default (history) => {
   navigation.push = createAction('GO_TO_LOCATION', {
@@ -194,15 +202,14 @@ export const Fragment = connect(mapStateToFragment)(({
   location,
   currentPath,
   forRoute,
-  withCondition = ({status}) => !status || status === 200,
-  element, 
+  withCondition = () => true,
+  element: element = 'div', 
   children
 }) => {
   isString(forRoute) && registerRoute(forRoute)
   const renderChildren = Boolean(withCondition(location) && 
       (forRoute === location.status || matchRoute(forRoute, currentPath)))
-  const El = element || 'div'
-  return renderChildren && <El key={forRoute}>{children}</El>
+  return renderChildren && <Element key={forRoute}>{children}</Element>
 })
 
 export const routeFragment = (route, action, condition, element) => {
