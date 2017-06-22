@@ -192,31 +192,34 @@ LinkClass.defaultProps = {
 export const Link = connect(mapStateToLink, mapDispatchToLink)(LinkClass)
 
 const mapStateToFragment = ({
-  location
+  location: {
+    status, 
+    pathname,
+    search
+  }
 }) => ({
-  location,
-  currentPath: location.pathname + location.search
+  status,
+  currentPath: pathname + search
 })
 
 export const Fragment = connect(mapStateToFragment)(({
-  location,
+  status,
   currentPath,
   forRoute,
-  withCondition = () => true,
-  element: element = 'div', 
+  beforeEnter,
+  Element = 'div', 
   children
 }) => {
-  isString(forRoute) && registerRoute(forRoute)
-  const renderChildren = Boolean(withCondition(location) && 
-      (forRoute === location.status || matchRoute(forRoute, currentPath)))
+  isString(forRoute) && registerRoute(forRoute, beforeEnter)
+  const renderChildren = Boolean(forRoute === status || matchRoute(forRoute, currentPath))
   return renderChildren && <Element key={forRoute}>{children}</Element>
 })
 
-export const routeFragment = (route, action, condition, element) => {
-  isString(route) && registerRoute(route, action)
+export const routeFragment = (route, actions, Element) => {
+  isString(route) && registerRoute(route, actions)
 
   return ({children}) => (
-    <Fragment forRoute={route} withCondition={condition} element={element}>
+    <Fragment forRoute={route} beforeEnter={actions} Element={Element}>
       {children}
     </Fragment>
   )
