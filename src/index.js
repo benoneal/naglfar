@@ -61,7 +61,7 @@ const matchStatus = (path) => {
   return {status, matches, url}
 }
 
-const buildLocationState = (location) => {
+export const buildLocationState = (location) => {
   const {status, matches} = matchStatus(location.pathname)
   return {
     ...location,
@@ -84,8 +84,7 @@ export default (history) => {
     handler: (state, {payload: location}) => ({
       ...state,
       location: buildLocationState(location)
-    }),
-    initialState: {location: buildLocationState(history.location)}
+    })
   })
 
   navigation.prefetch = createAction('LOCATION_PREFETCH', {
@@ -211,7 +210,7 @@ export const Fragment = connect(mapStateToFragment)(({
   children
 }) => {
   isString(forRoute) && registerRoute(forRoute, beforeEnter)
-  const renderChildren = Boolean(forRoute === status || matchRoute(forRoute, currentPath))
+  const renderChildren = Boolean(forRoute === status || (status === 200 && matchRoute(forRoute, currentPath)))
   return renderChildren && <Element key={forRoute}>{children}</Element>
 })
 
