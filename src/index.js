@@ -62,7 +62,7 @@ const matchStatus = (path) => {
 }
 
 export const buildLocationState = (location) => {
-  const {status, matches} = matchStatus(location.pathname)
+  const {status, matches} = matchStatus(location.pathname + location.search)
   return {
     ...location,
     status: location.status || status,
