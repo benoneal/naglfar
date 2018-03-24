@@ -1,12 +1,12 @@
 {
   "name": "naglfar",
-  "version": "1.1.2",
+  "version": "1.1.3",
   "description": "Redux router done right.",
   "repository": "https://github.com/benoneal/naglfar",
   "main": "dist/index.js",
   "scripts": {
-    "prepublish": "mkdir dist && babel src --out-dir dist",
-    "size": "npm run prepublish && bundle-size ./",
+    "prepare": "mkdir dist && babel src --out-dir dist",
+    "size": "npm run prepare && bundle-size ./",
     "lint": "standard",
     "test": "standard && mocha"
   },
@@ -28,17 +28,17 @@
     "babel-register": "^6.9.0",
     "bundle-size": "^0.6.0",
     "mocha": "^3.2.0",
-    "redux": "^3.6.0",
     "redux-mock-store": "^1.2.3",
     "standard": "^7.1.2"
   },
   "dependencies": {
-    "lodash": "^4.17.4",
+    "lodash": "^4.17.5",
     "qs": "^6.4.0",
-    "react": "^15.5.4",
-    "react-redux": "^5.0.4",
-    "route-parser": "^0.0.5",
-    "sleipnir": "^1.0.0"
+    "react": "^16.2.0",
+    "react-redux": "^5.0.7",
+    "redux": "^3.7.2",
+    "route-parser": "0.0.5",
+    "sleipnir": "^1.0.2"
   },
   "standard": {
     "parser": "babel-eslint"

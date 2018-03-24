@@ -10,6 +10,8 @@ const navigation = {}
 const redirect = {}
 const routes = {}
 
+export const whitelist = () => [...keys(redirect), ...keys(routes)]
+
 const trimTrailingSlash = (path) => {
   if (path !== '/' && path.slice(-1) === '/') return path.slice(0, -1)
   return path

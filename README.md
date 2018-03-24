@@ -155,3 +155,12 @@ const mapStateToProps = ({location}) => ({
 
 export default connect(mapStateToProps)(FilterOptions)
 ```
+
+If you want to only handle valid routes, you can extract the whitelist of all registered routes: 
+
+```js
+import {whitelist} from 'naglfar'
+
+const rejectInvalidRoutesMiddleware = (req, res, next) => 
+  whitelist.includes(req.path) ? next() : res.status(404).send()
+```
