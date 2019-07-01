@@ -1,37 +1,39 @@
 
 # Naglfar
 
-A router that keeps all state in redux. It treats the url like a form input: it fires actions on change which update the location in your state. This is accessible from any connected component: no need for a separate `RouteProvider` or other such nonsense. 
+A router that keeps all state in redux. It treats the url like a form input: it fires actions on change which update the location in your state. This is accessible from any redux-connected component: no need for a separate `RouteProvider`.
 
 It doesn't need to own/wrap your application. It provides a `Fragment` pattern to partition your UI based on current route, including route status codes.
 
-It works both in the browser and on the server, and offers: 
+It works both in the browser and on the server, and offers:
 
+- Server-side rendering
+- Data fetching prior to transition (via dispatching actions)
 - Status codes
-- Data fetching (via dispatching actions)
 - Not-found routes (and any status-code based route)
 - Redirects
-- Prefetching data (pre-firing actions) for Links 
+- Prefetching data (pre-firing actions without modifying state) for Links to speed up navigation
 
-Depends on the `history` module.  
+Requires the `history` module.
 
 ## How to use
 
 Install via `npm i -S naglfar` or `yarn add naglfar`.
 
-Create your routes. Example: 
+Create your routes. Example:
 
 ```js
 // routes.js
 import {routeFragment, routeRedirect} from 'naglfar'
 import {
-  getFrontPageFeed,
   getSubredditFeed,
   getStory
-} from './actions'
+} from './actionCreators'
 
+// Actions per route can be regular actionCreators, async thunks,
+// action objects, or action-type strings, or an array of any of those
 export const SubredditRoute = routeFragment('/r/:subreddit', getSubredditFeed)
-export const StoryRoute = routeFragment('/r/:subreddit/:story', getStory)
+export const StoryRoute = routeFragment('/r/:subreddit/:story', [getSubredditFeed, getStory])
 export const NotFoundRoute = routeFragment(404)
 export const ErrorRoute = routeFragment(500)
 
@@ -39,12 +41,11 @@ routeRedirect('/', '/r/front_page')
 ```
 Actions are passed the route params, and should return promises (this isn't necessary, but all promises return by your actions will be resolved before the state will transition to the specified route).
 
-Create your app: 
+Create your app:
 
 ```js
-import {Link} from 'naglfar'
+import {Link, Fragment} from 'naglfar'
 import {
-  FrontPageRoute,
   SubredditRoute,
   StoryRoute
 } from './routes'
@@ -56,6 +57,12 @@ export default () => (
       <Link to='/r/games' prefetchData>Games</Link>
       <Link to='/r/cars'>Cars</Link>
     </nav>
+     // You can create route-based views directly as well
+     // But the router doesn't know about these until after the first render,
+     // so their routes can't be relied on for data-fetching in SSR
+    <Fragment forRoute={'/r/front_page'}>
+      <FrontPage />
+    </Fragment>
     <SubredditRoute>
       <Feed />
     </SubredditRoute>
@@ -73,13 +80,21 @@ import {createStore, applyMiddleware} from 'redux'
 import thunk from 'redux-thunk'
 import {Provider} from 'react-redux'
 import createHistory from 'history/createBrowserHistory'
-import router from 'naglfar'
+import router, {reducer: routeReducer} from 'naglfar'
 import App from './App'
-import reducer from './store'
+import appReducer from './store'
 
-const createStoreWithMiddleware = applyMiddleware(thunk, router(createHistory()))(createStore)
+const composeReducers = (first, ...fns) =>
+  (s, a) => fns.reduce((s, fn) => fn(s, a), first(s, a))
 
-const store = createStoreWithMiddleware(reducer)
+const configureStore = (history, initialState) =>
+  createStore(
+    composeReducers(appReducer, routeReducer),
+    initialState,
+    applyMiddleware(thunk, router(history))
+  )
+
+const store = configureStore(createHistory(), {})
 
 export default () => {
   render(
@@ -101,7 +116,7 @@ import {resolveLocation} from 'naglfar'
 import Root from './Root'
 import App from './App'
 
-const renderHtml = ({bundle, store}) => {
+const renderHtml = ({store}) => {
   const body = renderToString(
     <Provider store={store}>
       <App />
@@ -109,40 +124,42 @@ const renderHtml = ({bundle, store}) => {
   )
 
   const rootMarkup = renderToStaticMarkup(
-    <Root 
+    <Root
       content={body}
       initialState={store.getState()}
-      bundle={bundle}
     />
   )
 
   return `<!doctype html>\n${rootMarkup}`
 }
 
-const resolveRoute = ({path, res, bundle, store}) => {
-  resolveLocation(path, config.store.dispatch)
+const resolvePath = ({path, store}) => {
+  resolveLocation(path, store.dispatch)
     .then(({status, url}) => {
-      if (url) return res.redirect(status, url)
-      res.status(status).send(renderHtml({bundle, store}))
+      if (url) return {status, redirect: url}
+      return {status, html: renderHtml({store})}
     })
 }
 
-const renderMiddleware = (bundle) => (req, res) => {
+const renderMiddleware = (req, res) => {
   const history = createHistory({
     initialEntries: [req.url]
   })
-  resolveRoute({path: req.url, res, bundle, store: configureStore(history)})
+  resolvePath({path: req.url, store: configureStore(history)})
+    .then(({redirect, status, html}) => {
+      if (redirect) res.redirect(status, redirect)
+      res.status(status).send(html)
+    })
 }
 
 export default renderMiddleware
 
-// use like:
-// server.get('*', renderMiddleware(webpackConfig.output.filename))
+// use like: server.get('*', renderMiddleware)
 ```
 
 ### Useful stuff
 
-If you need to access location data, such as query and route params, they are accessible on your redux store under the top level `location` key. Example: 
+If you need to access location data, such as query and route params, they are accessible on your redux store under the top level `location` key. Example:
 
 ```js
 import {connect} from 'react-redux'
@@ -156,11 +173,11 @@ const mapStateToProps = ({location}) => ({
 export default connect(mapStateToProps)(FilterOptions)
 ```
 
-If you want to only handle valid routes, you can extract the whitelist of all registered routes: 
+If you want to only handle valid routes, you can extract the whitelist of all registered routes:
 
 ```js
 import {whitelist} from 'naglfar'
 
-const rejectInvalidRoutesMiddleware = (req, res, next) => 
+const rejectInvalidRoutesMiddleware = (req, res, next) =>
   whitelist.includes(req.path) ? next() : res.status(404).send()
 ```
