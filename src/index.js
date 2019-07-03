@@ -63,7 +63,7 @@ const matchStatus = path => {
   return {status, matches, url}
 }
 
-const buildLocationState = location => {
+export const buildLocationState = location => {
   const {status, matches} = matchStatus(location.pathname + location.search)
   return {
     ...location,
