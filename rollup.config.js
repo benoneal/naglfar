@@ -4,6 +4,9 @@ import buble from 'rollup-plugin-buble'
 import babel from 'rollup-plugin-babel'
 import {uglify} from 'rollup-plugin-uglify'
 import cleanup from 'rollup-plugin-cleanup'
+import pack from './package.json'
+
+const external = [...Object.keys(pack.peerDependencies), 'react-dom/server']
 
 const plugins = [
   babel({
@@ -27,7 +30,7 @@ const plugins = [
 export default {
   input: 'src/index.js',
   plugins,
-  external: ['react', 'react-redux'],
+  external,
   output: {
     file: 'index.js',
     format: 'cjs',
