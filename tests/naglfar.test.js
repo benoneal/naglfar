@@ -26,11 +26,11 @@ const mockHistory = () => {
   h.location = {pathname: '/', search: ''}
   h.push = jest.fn(path => {
     h.location.pathname = path
-    h.listener(h.location)
+    h.listener({action: 'PUSH', location: h.location})
   })
   h.replace = jest.fn(path => {
     h.location.pathname = path
-    h.listener(h.location)
+    h.listener({action: 'REPLACE', location: h.location})
   })
   h.listener = undefined,
   h.listen = jest.fn(fn => h.listener = fn)
@@ -43,10 +43,11 @@ describe('Naglfar', () => {
   const thirdRouteActionThunk = actionThunk('thirdRouteThunkSuccess')
 
   it('returns a whitelist of registered routes and redirects', () => {
+    registerRoute('/t0')
     registerRoute('/t1/:test1', firstRouteActionThunk)
     registerRoute('/t3/:test3', [secondRouteActionThunk, thirdRouteActionThunk])
     registerRedirect('/t2', '/t3')
-    expect(whitelist()).toEqual(['/t2', '/t1/:test1', '/t3/:test3'])
+    expect(whitelist()).toEqual(['/t2', '/t0', '/t1/:test1', '/t3/:test3'])
   })
 
   it('matches routes and resolves all actions to a location', async () => {

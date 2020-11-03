@@ -1,9 +1,9 @@
-import React, {useEffect} from 'react'
+import React, {useEffect, forwardRef} from 'react'
 import {useSelector} from 'react-redux'
 import routePattern from 'route-parser'
 import qs from 'qs'
 
-const {keys, values, entries} = Object
+const {keys, values} = Object
 const redirect = {}
 const routes = {}
 
@@ -11,7 +11,7 @@ const isString = s => typeof s === 'string'
 
 export const whitelist = () => [...keys(redirect), ...keys(routes)]
 
-const trimTrailingSlash = (path) => {
+const trimTrailingSlash = (path = '') => {
   if (path !== '/' && path.slice(-1) === '/') return path.slice(0, -1)
   return path
 }
@@ -19,19 +19,18 @@ const trimTrailingSlash = (path) => {
 export const registerRedirect = (fromPath, toPath) =>
   redirect[fromPath] = toPath
 
-export const registerRoute = (route, action) => {
+export const registerRoute = (route, action = 'MATCHED_ROUTE_WITH_NO_ACTIONS') => {
   if (routes[route]) return
   routes[route] = {
     pattern: new routePattern(route),
-    action
+    actions: Array.isArray(action) ? action : [action]
   }
 }
 
 const findMatches = path => (
-  values(routes).reduce((acc, {pattern, action}) => {
+  values(routes).reduce((acc, {pattern, actions}) => {
     const params = pattern.match(path)
-    const matches = (Array.isArray(action) ? action : [action]).map(action => ({params, action}))
-    return params ? [...acc, ...matches] : acc
+    return params ? acc.concat(actions.map(action => ({params, action}))) : acc
   }, [])
 )
 
@@ -82,19 +81,23 @@ const createNav = (navMethod, dispatch) => path => {
 const enteredRoute = payload => ({type: 'ENTERED_ROUTE', payload})
 const enteringRoute = payload => ({type: 'ENTERING_ROUTE', payload})
 const prefetch = (path, state) => resolveLocation(path, a => a(b => b, () => state))
-const locationChange = dispatch => location =>
-  resolveLocation(location.pathname + location.search, dispatch)
+const locationChange = dispatch => action => {
+  const location = action.location || action
+  return resolveLocation(location.pathname + location.search, dispatch)
     .then(({status, url}) => {
       if (url) return replace(url)
       return dispatch(enteredRoute({...location, status, url}))
     })
+}
+
+export const navigateTo = path => push(path)
 
 export const reducer = (state = {}, {type, payload}) => {
   if (type === 'ENTERED_ROUTE') return {...state, location: buildLocationState(payload)}
   return state
 }
 
-export default history => store => {
+export default (history, uses_ssr = false) => store => {
   const originalPush = history.push.bind(history)
   const originalReplace = history.replace.bind(history)
   history.push = createNav(originalPush, store.dispatch)
@@ -102,7 +105,17 @@ export default history => store => {
   push = history.push
   replace = history.replace
   history.listen(locationChange(store.dispatch))
-  return next => action => next(action)
+
+  let initialised = uses_ssr
+  const initialise = _ => {
+    initialised = true
+    resolveLocation(history.location.pathname + history.location.search, store.dispatch)
+  }
+
+  return next => action => {
+    next(action)
+    if (!initialised) initialise()
+  }
 }
 
 const selectStatus = ({location}) => location.status
@@ -143,7 +156,7 @@ const shouldIgnoreClick = (e, target) => (
 const selectQuery = ({location}) => location.search
 const selectCurrentPath = ({location}) => location.pathname
 
-export const Link = ({
+export const Link = forwardRef(({
   to,
   target,
   prefetchData = false,
@@ -154,15 +167,16 @@ export const Link = ({
   onClick = () => {},
   children,
   ...rest
-}) => {
+}, ref) => {
   const query = useSelector(selectQuery)
   const currentPath = useSelector(selectCurrentPath)
   const state = useSelector(s => s)
   const linkTo = `${to}${persistQuery ? query : ''}`
-  useEffect(() => prefetchData && prefetch(linkTo, state), [])
+  useEffect(() => {if (prefetchData) prefetch(linkTo, state)}, [])
   const classes = [className, to === currentPath && activeClassName].filter(Boolean).join(' ')
   return (
     <a
+      ref={ref}
       {...rest}
       className={classes}
       href={to}
@@ -177,4 +191,4 @@ export const Link = ({
       {children}
     </a>
   )
-}
+})
