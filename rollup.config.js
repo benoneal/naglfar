@@ -1,44 +1,37 @@
-import resolve from 'rollup-plugin-node-resolve'
-import commonjs from 'rollup-plugin-commonjs'
-import buble from 'rollup-plugin-buble'
-import babel from 'rollup-plugin-babel'
-import {uglify} from 'rollup-plugin-uglify'
-import cleanup from 'rollup-plugin-cleanup'
+import buble from '@rollup/plugin-buble'
+import {terser} from 'rollup-plugin-terser'
 import pack from './package.json'
 
 const external = [...Object.keys(pack.peerDependencies), 'react-dom/server']
 
 const plugins = [
-  babel({
-    babelrc: false,
-    exclude: 'node_modules/**',
-    plugins: [
-      '@babel/plugin-syntax-jsx',
-    ],
+  buble({
+    objectAssign: true,
+    transforms: {
+      asyncAwait: false,
+      spreadRest: false,
+      generator: false,
+      dangerousForOf: true,
+    },
   }),
-  cleanup(),
-  buble({objectAssign: 'Object.assign'}),
-  resolve({browser: true}),
-  commonjs({sourceMap: false}),
-  uglify({
-    sourcemap: false,
-    mangle: true,
-    compress: {negate_iife: false, expression: true},
-  }),
+  terser(),
 ]
 
-export default {
+export default [{
   input: 'src/index.js',
   plugins,
   external,
+  treeshake: {
+    moduleSideEffects: false,
+    propertyReadSideEffects: false,
+    unknownGlobalSideEffects: false,
+  },
   output: {
     file: 'index.js',
     format: 'cjs',
     exports: 'named',
-    globals: {react: 'React'},
+    sourcemap: false,
     strict: false,
-    treeshake: {
-      pureExternalModules: true,
-    }
+    globals: {react: 'React'},
   }
-}
+}];
