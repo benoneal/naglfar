@@ -11,16 +11,18 @@ import naglfar, {
   reducer,
   routeFragment,
   Fragment,
-  Link
 } from '../src'
 
 const compose = (first, ...fns) => (state, action) => fns.reduce((acc, fn) => fn(acc, action), first(state, action))
 const aggregateActions = (state = {actions: []}, {type}) => ({...state, actions: [...state.actions, type]})
+const thunk = ({dispatch, getState}) => next => action =>
+  typeof action === 'function' ? action(dispatch, getState) : next(action)
 const createWorkingStore = (history, initialState = {}) =>
-  createStore(compose(reducer, aggregateActions), {...initialState, actions: []}, applyMiddleware(naglfar(history)))
+  createStore(compose(reducer, aggregateActions), {...initialState, actions: []}, applyMiddleware(thunk, naglfar(history)))
 
 const wait = ms => new Promise(resolve => setTimeout(resolve, ms))
 const actionThunk = type => jest.fn(payload => ({type, payload}))
+const asyncThunk = type => jest.fn(payload => dispatch => wait(1).then(() => dispatch({type, payload})))
 const mockHistory = () => {
   const h = {}
   h.location = {pathname: '/', search: ''}
@@ -39,8 +41,8 @@ const mockHistory = () => {
 
 describe('Naglfar', () => {
   const firstRouteActionThunk = actionThunk('firstRouteThunkSuccess')
-  const secondRouteActionThunk = actionThunk('secondRouteThunkSuccess')
-  const thirdRouteActionThunk = actionThunk('thirdRouteThunkSuccess')
+  const secondRouteActionThunk = asyncThunk('secondRouteThunkSuccess')
+  const thirdRouteActionThunk = asyncThunk('thirdRouteThunkSuccess')
 
   it('returns a whitelist of registered routes and redirects', () => {
     registerRoute('/t0')
@@ -88,6 +90,9 @@ describe('Naglfar', () => {
         payload: '/t3/cat'
       },
       {
+        type: 'INITIALISED_ROUTER',
+      },
+      {
         type: 'secondRouteThunkSuccess',
         payload: {
           test3: 'cat',
@@ -102,6 +107,7 @@ describe('Naglfar', () => {
       {
         type: 'ENTERED_ROUTE',
         payload: {
+          initialised: true,
           pathname: '/t3/cat',
           search: '',
           status: 200,
@@ -110,7 +116,7 @@ describe('Naglfar', () => {
       }
     ]
     const history = mockHistory()
-    const mockStore = configureMockStore([naglfar(history)])
+    const mockStore = configureMockStore([thunk, naglfar(history)])
     const store = mockStore({})
     expect(history.listen).toHaveBeenCalledWith(expect.any(Function))
     history.push('/t3/cat')
@@ -119,9 +125,10 @@ describe('Naglfar', () => {
   })
 
   it('creates route fragment components which only render their children on route matches', async () => {
+    const Element = routeFragment('/e/:element', asyncThunk('ELEMENT_SELECTED'))
     const Animal = routeFragment('/a/:animal', 'ANIMAL_SELECTED')
     const Vehicle = routeFragment('/v/:vehicle', {type: 'VEHICLE_SELECTED', payload: 'test'})
-    const Food = routeFragment('/f/:food', payload => ({type: 'FOOD_SELECTED', payload}), 'div')
+    const Food = routeFragment('/f/:food', actionThunk('FOOD_SELECTED'), 'div')
     const NotFound = routeFragment(404)
 
     const history = mockHistory()
@@ -129,15 +136,20 @@ describe('Naglfar', () => {
 
     const html = () => renderToString(
       <Provider store={store}>
-          <Animal>Animal</Animal>
-          <Vehicle>Vehicle</Vehicle>
-          <Food>Food</Food>
-          <Fragment forRoute={'/m/:mineral'} beforeEnter={payload => ({type: 'MINERAL_SELECTED', payload})}>Mineral</Fragment>
-          <Fragment forRoute={'/c/:cocktail'} beforeEnter={'COCKTAIL_SELECTED'} Element={'span'}>Cocktail</Fragment>
-          <NotFound>Error: 404 Not Found</NotFound>
+        <Element>Element</Element>
+        <Animal>Animal</Animal>
+        <Vehicle>Vehicle</Vehicle>
+        <Food>Food</Food>
+        <Fragment forRoute={'/m/:mineral'} beforeEnter={payload => ({type: 'MINERAL_SELECTED', payload})}>Mineral</Fragment>
+        <Fragment forRoute={'/c/:cocktail'} beforeEnter={'COCKTAIL_SELECTED'} Element={'span'}>Cocktail</Fragment>
+        <NotFound>Error: 404 Not Found</NotFound>
       </Provider>
     )
     expect(html()).toBe('Error: 404 Not Found')
+    history.push('/e/cadmium')
+    expect(html()).toBe('Error: 404 Not Found')
+    await wait(1)
+    expect(html()).toBe('Element')
     history.push('/a/lion')
     await wait(1)
     expect(html()).toBe('Animal')
@@ -154,6 +166,10 @@ describe('Naglfar', () => {
     await wait(1)
     expect(html()).toBe('<span>Cocktail</span>')
     expect(store.getState().actions.slice(1)).toEqual([
+      'ENTERING_ROUTE',
+      'INITIALISED_ROUTER',
+      'ELEMENT_SELECTED',
+      'ENTERED_ROUTE',
       'ENTERING_ROUTE',
       'ANIMAL_SELECTED',
       'ENTERED_ROUTE',

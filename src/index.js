@@ -58,7 +58,7 @@ const matchStatus = path => {
   path = trimTrailingSlash(path)
   const url = redirect[path]
   const matches = findMatches(path)
-  const status = url ? 302 : !findMatches(path).length ? 404 : 200
+  const status = url ? 302 : !matches.length ? 404 : 200
   return {status, matches, url}
 }
 
@@ -78,7 +78,8 @@ const createNav = (navMethod, dispatch) => path => {
   dispatch(enteringRoute(path))
   navMethod(path)
 }
-const enteredRoute = payload => ({type: 'ENTERED_ROUTE', payload})
+const initialisedRoute = () => ({type: 'INITIALISED_ROUTER'})
+const enteredRoute = payload => ({type: 'ENTERED_ROUTE', payload: {...payload, initialised: true}})
 const enteringRoute = payload => ({type: 'ENTERING_ROUTE', payload})
 const prefetch = (path, state) => resolveLocation(path, a => a(b => b, () => state))
 const locationChange = dispatch => action => {
@@ -93,6 +94,7 @@ const locationChange = dispatch => action => {
 export const navigateTo = path => push(path)
 
 export const reducer = (state = {}, {type, payload}) => {
+  if (type === 'INITIALISED_ROUTER') return {...state, location: {...state.location, initialised: true}}
   if (type === 'ENTERED_ROUTE') return {...state, location: buildLocationState(payload)}
   return state
 }
@@ -110,6 +112,7 @@ export default (history, uses_ssr = false) => store => {
   const initialise = _ => {
     initialised = true
     resolveLocation(history.location.pathname + history.location.search, store.dispatch)
+      .then(() => store.dispatch(initialisedRoute()))
   }
 
   return next => action => {
@@ -119,7 +122,8 @@ export default (history, uses_ssr = false) => store => {
 }
 
 const selectStatus = ({location}) => location.status
-const selectPath = ({location}) => location.pathname + location.search
+const selectPath = ({location}) =>
+  location.initialised ? (location.pathname + location.search) : ''
 
 export const Fragment = ({
   forRoute,
@@ -154,7 +158,8 @@ const shouldIgnoreClick = (e, target) => (
 )
 
 const selectQuery = ({location}) => location.search
-const selectCurrentPath = ({location}) => location.pathname
+const selectCurrentPath = ({location}) => 
+  location.initialised ? location.pathname : ''
 
 export const Link = forwardRef(({
   to,
