@@ -131,20 +131,22 @@ export const Fragment = ({
   forRoute,
   beforeEnter,
   Element = React.Fragment,
+  condition = () => true,
   children
 }) => {
   const status = useSelector(selectStatus)
   const path = useSelector(selectPath)
+  const canRender = useSelector(condition)
   isString(forRoute) && registerRoute(forRoute, beforeEnter)
-  const renderChildren = Boolean(forRoute === status || (status === 200 && matchRoute(forRoute, path)))
+  const renderChildren = canRender && Boolean(forRoute === status || (status === 200 && matchRoute(forRoute, path)))
   return renderChildren && <Element key={forRoute}>{children}</Element>
 }
 
-export const routeFragment = (route, actions, Element) => {
+export const routeFragment = (route, actions, Element, condition) => {
   isString(route) && registerRoute(route, actions)
 
   return ({children}) => (
-    <Fragment forRoute={route} beforeEnter={actions} Element={Element}>
+    <Fragment forRoute={route} beforeEnter={actions} Element={Element} condition={condition}>
       {children}
     </Fragment>
   )

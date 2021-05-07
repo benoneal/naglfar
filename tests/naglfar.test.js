@@ -129,6 +129,7 @@ describe('Naglfar', () => {
     const Animal = routeFragment('/a/:animal', 'ANIMAL_SELECTED')
     const Vehicle = routeFragment('/v/:vehicle', {type: 'VEHICLE_SELECTED', payload: 'test'})
     const Food = routeFragment('/f/:food', actionThunk('FOOD_SELECTED'), 'div')
+    const Memory = routeFragment('/mem/:memory', actionThunk('MEMORY_SELECTED'), 'div', () => false)
     const NotFound = routeFragment(404)
 
     const history = mockHistory()
@@ -140,6 +141,7 @@ describe('Naglfar', () => {
         <Animal>Animal</Animal>
         <Vehicle>Vehicle</Vehicle>
         <Food>Food</Food>
+        <Memory>Memory</Memory>
         <Fragment forRoute={'/m/:mineral'} beforeEnter={payload => ({type: 'MINERAL_SELECTED', payload})}>Mineral</Fragment>
         <Fragment forRoute={'/c/:cocktail'} beforeEnter={'COCKTAIL_SELECTED'} Element={'span'}>Cocktail</Fragment>
         <NotFound>Error: 404 Not Found</NotFound>
@@ -159,6 +161,9 @@ describe('Naglfar', () => {
     history.push('/f/cake')
     await wait(1)
     expect(html()).toBe('<div>Food</div>')
+    history.push('/mem/childhood')
+    await wait(1)
+    expect(html()).toBe('')
     history.push('/m/salt')
     await wait(1)
     expect(html()).toBe('Mineral')
@@ -178,6 +183,9 @@ describe('Naglfar', () => {
       'ENTERED_ROUTE',
       'ENTERING_ROUTE',
       'FOOD_SELECTED',
+      'ENTERED_ROUTE',
+      'ENTERING_ROUTE',
+      'MEMORY_SELECTED',
       'ENTERED_ROUTE',
       'ENTERING_ROUTE',
       'MINERAL_SELECTED',
