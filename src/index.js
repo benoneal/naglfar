@@ -62,9 +62,10 @@ const matchStatus = path => {
   return {status, matches, url}
 }
 
-export const buildLocationState = location => {
+export const buildLocationState = (location, {entering, ...locationState} = {}) => {
   const {status, matches} = matchStatus(location.pathname + location.search)
   return {
+    ...locationState,
     ...location,
     status: location.status || status,
     params: matches.reduce((acc, {params}) => ({...acc, ...params}), {}),
@@ -79,7 +80,7 @@ const createNav = (navMethod, dispatch) => path => {
   navMethod(path)
 }
 const initialisedRoute = () => ({type: 'INITIALISED_ROUTER'})
-const enteredRoute = payload => ({type: 'ENTERED_ROUTE', payload: {...payload, initialised: true}})
+const enteredRoute = payload => ({type: 'ENTERED_ROUTE', payload})
 const enteringRoute = payload => ({type: 'ENTERING_ROUTE', payload})
 const prefetch = (path, state) => resolveLocation(path, a => a(b => b, () => state))
 const locationChange = dispatch => action => {
@@ -95,7 +96,8 @@ export const navigateTo = path => push(path)
 
 export const reducer = (state = {}, {type, payload}) => {
   if (type === 'INITIALISED_ROUTER') return {...state, location: {...state.location, initialised: true}}
-  if (type === 'ENTERED_ROUTE') return {...state, location: buildLocationState(payload)}
+  if (type === 'ENTERED_ROUTE') return {...state, location: buildLocationState(payload, state.location)}
+  if (type === 'ENTERING_ROUTE') return {...state, location: {...state.location, entering: payload}}
   return state
 }
 

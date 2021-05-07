@@ -81,6 +81,7 @@ describe('Naglfar', () => {
     }
     expect(reducer({}, {type: 'SOMETHING', payload: testLocation})).toEqual({})
     expect(reducer({}, {type: 'ENTERED_ROUTE', payload: testLocation})).toEqual(expectedState)
+    expect(reducer({}, {type: 'INITIALISED_ROUTER'})).toEqual({location: {initialised: true}})
   })
 
   it('operates as middleware in redux', async () => {
@@ -107,7 +108,6 @@ describe('Naglfar', () => {
       {
         type: 'ENTERED_ROUTE',
         payload: {
-          initialised: true,
           pathname: '/t3/cat',
           search: '',
           status: 200,
@@ -186,6 +186,15 @@ describe('Naglfar', () => {
       'COCKTAIL_SELECTED',
       'ENTERED_ROUTE'
     ])
+    expect(store.getState().location).toEqual({
+      initialised: true,
+      params: {cocktail: 'manhattan'},
+      pathname: '/c/manhattan',
+      query: {},
+      search: '',
+      status: 200,
+      url: undefined
+    })
   })
 })
 
