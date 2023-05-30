@@ -1,8 +1,9 @@
+import { jest } from '@jest/globals'
 import React from 'react'
 import {renderToString} from 'react-dom/server'
 import {Provider} from 'react-redux'
 import {applyMiddleware, createStore} from 'redux'
-import configureMockStore from 'redux-mock-store'
+import {configureMockStore} from '@jedmao/redux-mock-store'
 import naglfar, {
   whitelist,
   registerRedirect,
@@ -75,7 +76,7 @@ describe('Naglfar', () => {
           test3: 'dog'
         },
         query: {
-          test: '123'
+          test: 123
         }
       }
     }
@@ -115,6 +116,7 @@ describe('Naglfar', () => {
         },
       }
     ]
+    
     const history = mockHistory()
     const mockStore = configureMockStore([thunk, naglfar(history)])
     const store = mockStore({})

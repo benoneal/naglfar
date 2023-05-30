@@ -1,7 +1,7 @@
 import React, {useEffect, forwardRef} from 'react'
 import {useSelector} from 'react-redux'
 import routePattern from 'route-parser'
-import qs from 'qs'
+import qs from 'query-string'
 
 const {keys, values} = Object
 const redirect = {}
@@ -10,6 +10,8 @@ const routes = {}
 const isString = s => typeof s === 'string'
 
 export const whitelist = () => [...keys(redirect), ...keys(routes)]
+
+const qs_options = {arrayFormat: 'comma', parseNumbers: true, parseBooleans: true}
 
 const trimTrailingSlash = (path = '') => {
   if (path !== '/' && path.slice(-1) === '/') return path.slice(0, -1)
@@ -69,7 +71,7 @@ export const buildLocationState = (location, {entering, ...locationState} = {}) 
     ...location,
     status: location.status || status,
     params: matches.reduce((acc, {params}) => ({...acc, ...params}), {}),
-    query: qs.parse(location.search.split('?')[1] || '')
+    query: qs.parse(location.search.split('?')[1] || '', qs_options)
   }
 }
 

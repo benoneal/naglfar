@@ -1,6 +1,5 @@
 import buble from '@rollup/plugin-buble'
-import {terser} from 'rollup-plugin-terser'
-import pack from './package.json'
+import pack from './package.json' assert {type: 'json'}
 
 const external = [...Object.keys(pack.peerDependencies), 'react-dom/server']
 
@@ -14,7 +13,6 @@ const plugins = [
       dangerousForOf: true,
     },
   }),
-  terser(),
 ]
 
 export default [{
